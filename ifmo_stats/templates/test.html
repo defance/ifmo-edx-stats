@@ -1,0 +1,154 @@
+<%! from django.utils.translation import ugettext as _ %>
+
+<%inherit file="main.html" />
+
+<%namespace name='static' file='static_content.html'/>
+
+
+<%block name="headextra">
+<%static:css group='style-course-vendor'/>
+<%static:css group='style-course'/>
+</%block>
+
+
+<%include file="/courseware/course_navigation.html" args="active_page='stats'" />
+<%block name="js_extra">
+    <script language="javascript" type="text/javascript" src="${static.url('js/flot/jquery.js')}"></script>
+	<script language="javascript" type="text/javascript" src="${static.url('js/flot/jquery.flot.js')}"></script>
+	<script language="javascript" type="text/javascript" src="${static.url('js/flot/jquery.flot.categories.js')}"></script>
+    <script type="text/javascript">
+
+     $(function() {
+
+        var labels = [
+            {
+                try: 2,
+                maxTry: 5,
+                points: 1,
+                maxPoints:1
+            },
+                {
+                try: 4,
+                maxTry: 5,
+                points: 1,
+                maxPoints:3
+            },
+                {
+                try: 1,
+                maxTry: 1,
+                points: 0,
+                maxPoints:1
+            },
+                {
+                try: 1,
+                maxTry: 5,
+                points: 1,
+                maxPoints:1
+            },
+                {
+                try: 2,
+                maxTry: 3,
+                points: 4,
+                maxPoints:6
+            },{
+                try: 1,
+                maxTry: 5,
+                points: 1,
+                maxPoints:1
+            }
+        ];
+         var data3 = [
+             {
+                 label:"done",
+                 color:0,
+                 data:[[100, 1], [75, 4]]
+             },
+             {
+                 label:"failed",
+                 color:1,
+                 data:[[70, 2], [10, 5]]
+             },
+             {
+                 label:"in progress",
+                 color:2,
+                 data:[[50, 3], [30, 6]]
+             }
+         ];
+         var data4 = [
+             {
+                 color:"#DCEDC8",
+                 data:[[100, 1], [100, 4]]
+             },
+             {
+                 color:"#FFCDD2",
+                 data:[[100, 2], [100, 5]]
+             },
+             {
+                 color:"#BBDEFB",
+                 data:[[100, 3], [100, 6]]
+             }
+         ];
+
+		var p = $.plot("#placeholder", data3.concat(data4) ,  {
+			series: {
+				bars: {
+					show: true,
+					barWidth: 1,
+					align: "center",
+                    horizontal: true
+				}
+			},
+			yaxis: {
+				tickLength: 0,
+                ticks: [[1,"1test"], [2,"2test"], [3,"3test"],  [4, "4test"], [5,"5test"], [6, "6test"]],
+                transform: function (v) { return -v; },
+                inverseTransform: function (v) { return -v; }
+			},
+            xaxis:{
+              position: "top"
+            },
+            legend:{
+                
+            },
+            colors: ["#8BC34A", "#F44336", "#2196F3"]
+		}
+        );
+        $.each(data3, function(i, el){
+            $.each(el.data, function(i, el){
+            var o = p.pointOffset({x: el[0], y: el[1]});
+            $('<div class="data-point-label">(tries)' + labels[el[1]-1].try +'/' + labels[el[1]-1].maxTry+
+                    '&nbsp;&nbsp;&nbsp;&nbsp;(points)'+ labels[el[1]-1].points + '/' + labels[el[1]-1].maxPoints+'</div>').css( {
+            position: 'absolute',
+            left: 200,
+            top: o.top-6 ,
+            display: 'none'
+             }).appendTo(p.getPlaceholder()).fadeIn('slow');
+         })});
+
+		// Add the Flot version string to the footer
+
+		$("#footer").prepend("Flot " + $.plot.version + " &ndash; ");
+	});
+
+    </script>
+</%block>
+
+<section class="container">
+    <div id="header">
+		<h2>Categories</h2>
+	</div>
+
+	<div id="content">
+
+		<div style="width:1000px;height:600px">
+			<div id="placeholder" style="width:1000px;height:600px"></div>
+		</div>
+
+		<p>With the categories plugin you can plot categories/textual data easily.</p>
+
+	</div>
+
+	<div id="footer">
+		Copyright &copy; 2007 - 2014 IOLA and Ole Laursen
+	</div>
+</section>
