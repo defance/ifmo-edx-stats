@@ -28,7 +28,7 @@ def patch_urls():
         pass
 
 
-class StatsTab(CourseTab):
+class StatsTab(StaffTab):
     type = 'stats'
     is_movable = False
     def __init__(self, tab_dict=None):  # pylint: disable=unused-argument
