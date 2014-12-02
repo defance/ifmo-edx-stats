@@ -20,6 +20,11 @@
             var ntabindex = $(this).prev("input").attr('tabindex');
             ntabindex++;
             $('input[tabindex='+ntabindex+']').focus();
+            $.ajax({
+                type:'POST',
+                url: "/ajax_grade",
+                data: {tabindex: ntabindex-1}
+            });
         });
         $('.data_in').keypress(function (e) {
          var key = e.which;
@@ -28,8 +33,25 @@
             var ntabindex = $(this).attr('tabindex');
             ntabindex++;
             $('input[tabindex='+ntabindex+']').focus();
+              $.ajax({
+                type:'POST',
+                url: "/ajax_grade",
+                data: {tabindex: ntabindex-1,
+                       course_id: "${course_raw_id}",
+                       value: $(this).attr('value')
+                        }
+            });
           }
         });
+        /*$("#sendGrade").submit(function (e){
+            e.preventDefault();
+            $.ajax({
+                type:'POST',
+                url: "/ajax_grade",
+                data: $(this).attr('tabindex')
+            });
+        });*/
+
 
   </script>
 </%block>

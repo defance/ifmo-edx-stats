@@ -5,6 +5,9 @@ from instructor.views.api import require_level
 from courseware.courses import get_course_with_access
 from django.contrib.auth.models import User
 from instructor.offline_gradecalc import student_grades
+from django.http import HttpResponse
+from models import Grading
+from datetime import date
 
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
 @require_level('staff')
@@ -36,10 +39,34 @@ def gradebook(request, course_id):
     ]
 
     return render_to_response('ifmoGradebook.html', {
+        'ajaxUrl': request.path + "/ajax_grade",
         'students': student_info,
         'course': course,
         'course_id': course_key,
+        'course_raw_id':course_id,
         # Checked above
         'staff_access': True,
         'ordered_grades': sorted(course.grade_cutoffs.items(), key=lambda i: i[1], reverse=True),
     })
+
+
+def save_grade(request):
+    grade_data = Grading()
+    print int(request.POST.get('tabindex'))+1
+    print request.POST.get('course_id')
+    try:
+        grade_data = Grading.objects.get(
+            course_id = request.POST.get('course_id'),
+            problem_number = (int(request.POST.get('tabindex'))+1)//2)
+    except Exception:
+        grade_data = Grading(
+            course_id = request.POST.get('course_id'),
+            problem_number = (int(request.POST.get('tabindex'))+1)//2)
+
+    if not int(request.POST.get('tabindex'))%2:
+        value = request.POST.get('value').split("/")
+        grade_data.deadline = date(day=int(value[0]), month=int(value[1]), year=int(value[2]))
+    else:
+        grade_data.min_grade = int(request.POST.get('value'))
+    grade_data.save()
+    return HttpResponse("???")
