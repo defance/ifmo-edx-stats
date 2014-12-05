@@ -8,6 +8,8 @@ from instructor.offline_gradecalc import student_grades
 from django.http import HttpResponse
 from models import Grading
 from datetime import date
+from xmodule.graders import AssignmentFormatGrader
+from south.models import MigrationHistory
 
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
 @require_level('staff')
@@ -25,8 +27,25 @@ def gradebook(request, course_id):
         courseenrollment__is_active=1
     ).order_by('username').select_related("profile")
 
-    # possible extension: implement pagination to show to large courses
+    grading_filter = Grading.objects.filter(
+        course_id=course_id
+    )
 
+    grading = [
+        {
+            'problem_number': grade.problem_number,
+            'deadline': grade.deadline,
+            'min_grade': grade.min_grade
+        }
+        for grade in grading_filter
+    ]
+    # possible extension: implement pagination to show to large courses
+    """grading_context = course.grading_context
+    for section_format, sections in grading_context['graded_sections'].iteritems():
+        for section in sections:
+            print section['section_descriptor'].display_name_with_default
+
+    print course.grader.sections[0][0].short_label"""
     student_info = [
         {
             'username': student.username,
@@ -44,6 +63,7 @@ def gradebook(request, course_id):
         'course': course,
         'course_id': course_key,
         'course_raw_id':course_id,
+        'grading': grading,
         # Checked above
         'staff_access': True,
         'ordered_grades': sorted(course.grade_cutoffs.items(), key=lambda i: i[1], reverse=True),

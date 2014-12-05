@@ -15,6 +15,9 @@
             $(".save_button").remove();
             var b = $('<button type="submit" class="save_button" >save</button>');
             $(this).after(b);
+            if(!($(this).attr('tabindex')%2)) {
+                $(this).mask('00/00/0000')
+            }
         });
         $( ".save_button" ).live("click", function() {
             var ntabindex = $(this).prev("input").attr('tabindex');
@@ -74,7 +77,6 @@
   <script type="text/javascript">
     $(document).ready(function() {
       var gradebook = new Gradebook($('.gradebook-content'));
-      $('#date_input').mask('00/00/0000');
     });
   </script>
 
@@ -113,7 +115,14 @@
 <div class="gradebook-wrapper">
   <section class="gradebook-content">
     <h1>${_("Gradebook")}</h1>
-
+    <ul>
+        <li>
+            Hello
+        </li>
+        <li>
+            YO
+        </li>
+    </ul>
     <table class="student-table">
       <thead>
         <tr>
@@ -180,19 +189,40 @@
 
         <tbody>
         <tr>
-        %for section in range(0,len(students)+1):
+        %for section in range(0,len(students[0]['grade_summary']['section_breakdown'])+1):
             <td>
                 <div class="grade_input">
-                    <input type="search" class="data_in" tabindex="${1+2*section}">
+                  <%def name="input_grade(section)">
+                    <%
+                        value=""
+                        for el in grading:
+                          if el['problem_number'] == section+1:
+                            value = el['min_grade']
+                            break
+                    %>
+                    <input type="search" class="data_in" tabindex="${1+2*section}" value="${value}">
+                  </%def>
+                  ${input_grade(section)}
                 </div>
             </td>
         %endfor
         </tr>
         <tr>
-        %for section in range(0,len(students)+1):
+        %for section in range(0,len(students[0]['grade_summary']['section_breakdown'])+1):
             <td>
                 <div class="grade_input">
-                    <input type="search" class="data_in" id="date_input" tabindex="${2+2*section}">
+                   <%def name="input_date(section)">
+                    <%
+                        value=""
+                        for el in grading:
+                          if el['problem_number'] == section+1:
+                            date = el['deadline']
+                            value = str(date.day)+'/'+str(date.month)+'/'+str(date.year)
+                            break
+                    %>
+                    <input type="search" class="data_in" id="date_input" tabindex="${2+2*section}" value="${value}">
+                   </%def>
+                   ${input_date(section)}
                 </div>
             </td>
         %endfor
