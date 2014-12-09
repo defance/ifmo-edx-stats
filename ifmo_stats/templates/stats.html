@@ -1,0 +1,81 @@
+<%! from django.utils.translation import ugettext as _ %>
+<%inherit file="/main.html" />
+<%! from django.core.urlresolvers import reverse %>
+<%namespace name='static' file='/static_content.html'/>
+
+<%
+gradeUrl=url+'/grade'
+statsUrl=url
+%>
+
+<%block name="headextra">
+<%static:css group='style-course-vendor'/>
+<%static:css group='style-course'/>
+
+  <style type="text/css">
+        .table_input{
+            height: 20px;
+        }
+        .grade_input {
+            height: 20;
+            width: 164px; /* Ширина поля с кнопкой */
+            /*border: 1px solid #000;  Параметры рамки */
+            min-height: 20px; /* Минимальная высота */
+        }
+        .data_in {
+            border: none; /* Убираем рамку */
+            outline: none; /* Убираем свечение в Chrome и Safari */
+            -webkit-appearance: none; /* Убираем рамку в Chrome и Safari */
+            width: 100px; /* Ширина поля */
+            vertical-align: middle; /* Выравнивание по середине */
+        }
+        .save_button{
+            width: 40px; /* Ширина кнопки */
+            height: 18px; /* Высота кнопки */
+            border: 0px; /* Убираем рамку */
+            padding: 0px;
+            text-align: center;
+            /*background: url(${static.url('images/enter.png')}) no-repeat 50% 50%;*/
+         }
+  </style>
+
+</%block>
+
+<%include file="/courseware/course_navigation.html" args="active_page='stats'" />
+
+<section class="container">
+<div>
+<h1>${_("Stats")}</h1>
+<ul>
+    <li>
+        <a href=${gradeUrl}>Grade</a>
+    </li>
+    <li>
+        <a href=${statsUrl}>Stats</a>
+    </li>
+</ul>
+<table>
+    <thead>
+        <tr>
+            <th>Section</th>
+            <th>Total</th>
+            <th>Tried</th>
+            <th>Over zero</th>
+            <th>Over min</th>
+            <th>Max</th>
+            <th>Zero</th>
+        </tr>
+    </thead>
+    <tbody>
+        %for section in all_stats:
+        <tr>
+            <td>${section[0]}</td>
+            %for score in section[1]:
+            <td>${score}</td>
+            %endfor
+        </tr>
+        %endfor
+    </tbody>
+</table>
+</div>
+</section>

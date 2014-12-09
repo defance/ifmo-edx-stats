@@ -1,0 +1,155 @@
+<%! from django.utils.translation import ugettext as _ %>
+<%inherit file="/main.html" />
+<%! from django.core.urlresolvers import reverse %>
+<%namespace name='static' file='/static_content.html'/>
+
+<%
+gradeUrl=url
+statsUrl=url[:-6]
+%>
+
+<%block name="js_extra">
+  <script type="text/javascript" src="${static.url('js/jquery.mask.js')}"></script>
+  <script type="text/javascript">
+
+        $('.data_in').focus(function () {
+            $(".save_button").remove();
+            var b = $('<button type="submit" class="save_button" >save</button>');
+            $(this).after(b);
+            if(!($(this).attr('tabindex')%2)) {
+                $(this).mask('00/00/0000')
+            }
+        });
+        $( ".save_button" ).live("click", function() {
+            var ntabindex = $(this).prev("input").attr('tabindex');
+            ntabindex++;
+            $('input[tabindex='+ntabindex+']').focus();
+            $.ajax({
+                type:'POST',
+                url: $(location).attr('href')+'/ajax',
+                data: {tabindex: ntabindex-1,
+                       value: $(this).attr('value')
+                        }
+            });
+        });
+        $('.data_in').keypress(function (e) {
+         var key = e.which;
+         if(key == 13)  // the enter key code
+          {
+            var ntabindex = $(this).attr('tabindex');
+            ntabindex++;
+            $('input[tabindex='+ntabindex+']').focus();
+              $.ajax({
+                type:'POST',
+                url: $(location).attr('href')+'/ajax',
+                data: {tabindex: ntabindex-1,
+                       value: $(this).attr('value')
+                        }
+            });
+          }
+        });
+
+  </script>
+</%block>
+
+<%block name="headextra">
+<%static:css group='style-course-vendor'/>
+<%static:css group='style-course'/>
+
+  <style type="text/css">
+        .table_input{
+            height: 20px;
+        }
+        .grade_input {
+            height: 20;
+            width: 164px; /* Ширина поля с кнопкой */
+            /*border: 1px solid #000;  Параметры рамки */
+            min-height: 20px; /* Минимальная высота */
+        }
+        .data_in {
+            border: none; /* Убираем рамку */
+            outline: none; /* Убираем свечение в Chrome и Safari */
+            -webkit-appearance: none; /* Убираем рамку в Chrome и Safari */
+            width: 100px; /* Ширина поля */
+            vertical-align: middle; /* Выравнивание по середине */
+        }
+        .save_button{
+            width: 40px; /* Ширина кнопки */
+            height: 18px; /* Высота кнопки */
+            border: 0px; /* Убираем рамку */
+            padding: 0px;
+            text-align: center;
+            /*background: url(${static.url('images/enter.png')}) no-repeat 50% 50%;*/
+         }
+  </style>
+
+</%block>
+
+<%include file="/courseware/course_navigation.html" args="active_page='stats'" />
+
+<section class="container">
+<div>
+  <section>
+    <h1>${_("Gradebook")}</h1>
+    <ul>
+
+        <li>
+            <a href=${gradeUrl}>Grade</a>
+        </li>
+        <li>
+            <a href=${statsUrl}>Stats</a>
+        </li>
+    </ul>
+    <div>
+      <table>
+        <%
+        templateSummary = students[0]['grade_summary']
+        %>
+        <tbody>
+        %for section in range(0, len(templateSummary['section_breakdown'])):
+        <tr>
+            <td><div>${templateSummary['section_breakdown'][section]['label']}</div></td>
+            <td><div class="grade_input">
+                  <%def name="input_grade(counter)">
+                    <%
+                        value=""
+                        for el in grading:
+                          if el['problem_number'] == counter:
+                            value =str(el['min_grade']*100)[:-2] if el['min_grade']!=None else ""
+                            break
+                    %>
+                    <input type="search" class="data_in" tabindex="${1+2*(counter-1)}" value="${value}">
+                  </%def>
+                  ${input_grade(section+1)}
+            </div></td>
+            <td><div class="grade_input">
+                   <%def name="input_date(counter)">
+                    <%
+                        value=""
+                        for el in grading:
+                          if el['problem_number'] == counter:
+                            date = el['deadline']
+                            value = str(date.day)+'/'+str(date.month)+'/'+str(date.year) if date!=None else ""
+                            break
+                    %>
+                    <input type="search" class="data_in" id="date_input" tabindex="${2+2*(counter-1)}" value="${value}">
+                   </%def>
+                   ${input_date(section+1)}
+            </div></td>
+        </tr>
+        %endfor
+        <tr>
+        <td><div>Total</div></td>
+        <td><div class="grade_input">
+                  ${input_grade(len(templateSummary['section_breakdown'])+1)}
+        </div></td>
+        <td><div class="grade_input">
+                   ${input_date(len(templateSummary['section_breakdown'])+1)}
+        </div></td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+</section>
