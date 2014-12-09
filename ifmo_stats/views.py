@@ -40,21 +40,18 @@ def grade(request, course_id):
         for grade in grading_filter
     ]
     # possible extension: implement pagination to show to large courses
-<<<<<<< HEAD
     """grading_context = course.grading_context
     for section_format, sections in grading_context['graded_sections'].iteritems():
         for section in sections:
             print section['section_descriptor'].display_name_with_default
 
     print course.grader.sections[0][0].short_label"""
-=======
     grading_context = course.grading_context
     for section_format, sections in grading_context['graded_sections'].iteritems():
         for section in sections:
             print [descriptor.location for descriptor in section['xmoduledescriptors']]
 
     print course.grader.sections[0][0].short_label
->>>>>>> added grading and stats
     student_info = [
         {
             'username': enrolled_students[0].username,
@@ -71,10 +68,7 @@ def grade(request, course_id):
         'students': student_info,
         'course': course,
         'course_id': course_key,
-<<<<<<< HEAD
         'course_raw_id':course_id,
-=======
->>>>>>> added grading and stats
         'grading': grading,
         # Checked above
         'staff_access': True,
