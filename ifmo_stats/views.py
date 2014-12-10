@@ -8,8 +8,7 @@ from instructor.offline_gradecalc import student_grades
 from django.http import HttpResponse
 from models import Grading
 from datetime import date
-from xmodule.graders import AssignmentFormatGrader
-from south.models import MigrationHistory
+from courseware.models import StudentModule
 
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
 @require_level('staff')
@@ -40,16 +39,18 @@ def grade(request, course_id):
         for grade in grading_filter
     ]
     # possible extension: implement pagination to show to large courses
-    """grading_context = course.grading_context
-    for section_format, sections in grading_context['graded_sections'].iteritems():
-        for section in sections:
-            print section['section_descriptor'].display_name_with_default
 
-    print course.grader.sections[0][0].short_label"""
+
     grading_context = course.grading_context
-    for section_format, sections in grading_context['graded_sections'].iteritems():
-        for section in sections:
-            print [descriptor.location for descriptor in section['xmoduledescriptors']]
+    for student in enrolled_students:
+        for section_format, sections in grading_context['graded_sections'].iteritems():
+            for section in sections:
+                print StudentModule.objects.filter(
+                            student=student,
+                            module_state_key__in=[
+                                descriptor.location for descriptor in section['xmoduledescriptors']
+                            ]
+                        )
 
     print course.grader.sections[0][0].short_label
     student_info = [
@@ -62,7 +63,7 @@ def grade(request, course_id):
         }
         #for student in enrolled_students
     ]
-    print student_info[0]['grade_summary']['percent']
+    print student_info[0]['grade_summary']['section_breakdown'][0]['detail'].split(' - ')[2]
     return render_to_response('easyGradebook.html', {
         'url': request.path,
         'students': student_info,
@@ -120,6 +121,16 @@ def stats(request, course_id):
     [4] - Max
     [5] - Zero
     """
+    check2=[]
+    subsections = {}
+    grading_context = course.grading_context
+    for section_format, sections in grading_context['graded_sections'].iteritems():
+        for section in sections:
+            if(subsections.get(section['section_descriptor'].format)):
+                subsections[section['section_descriptor'].format].append(section['xmoduledescriptors'])
+            else:
+                subsections[section['section_descriptor'].format] = [section['xmoduledescriptors']]
+
 
     all_stats = []
     for section in student_grades(enrolled_students[0], request, course)['section_breakdown']:
@@ -133,6 +144,27 @@ def stats(request, course_id):
         j = 0
         for section in student_grades(student, request, course)['section_breakdown']:
             if(section['label'][-3:] != 'Avg'):
+                try:
+                    if(len(subsections[section['category']]) > 1):
+                        subsection = subsections[section['category']][int(section['label'][-2:])-1]
+                    else:
+                        subsection = subsections[section['category']][0]
+
+                    problems = StudentModule.objects.filter(
+                        student=student,
+                        module_state_key__in=[
+                            descriptor.location for descriptor in subsection
+                        ]
+                    )
+                    for problem in problems:
+                        if(problem.modified != problem.created):
+                            all_stats[j][1][0] += 1
+                            all_stats[j][1][1] += 1
+                        else:
+                            all_stats[j][1][0] += 1
+                except IndexError:
+                    pass
+
                 if(section['percent'] > 0):
                     all_stats[j][1][2] += 1
                 if(grading.get(j) and section['percent'] >= grading[j]):
@@ -142,6 +174,7 @@ def stats(request, course_id):
                 if(section['percent'] == 0):
                     all_stats[j][1][5] += 1
                 j += 1
+
 
     return render_to_response('stats.html', {
         'url': request.path,
