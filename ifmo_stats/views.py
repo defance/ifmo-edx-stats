@@ -9,6 +9,7 @@ from django.http import HttpResponse
 from models import Grading
 from datetime import date
 from courseware.models import StudentModule
+import csv
 
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
 @require_level('staff')
@@ -40,17 +41,6 @@ def grade(request, course_id):
     ]
     # possible extension: implement pagination to show to large courses
 
-
-    grading_context = course.grading_context
-    for student in enrolled_students:
-        for section_format, sections in grading_context['graded_sections'].iteritems():
-            for section in sections:
-                print StudentModule.objects.filter(
-                            student=student,
-                            module_state_key__in=[
-                                descriptor.location for descriptor in section['xmoduledescriptors']
-                            ]
-                        )
 
     print course.grader.sections[0][0].short_label
     student_info = [
@@ -96,6 +86,79 @@ def save_grade(request, course_id):
     grade_data.save()
     return HttpResponse("???")
 
+
+def csv_out(request, course_id):
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="wellgraded_students.csv"'
+    writer = csv.writer(response)
+
+    course_key = SlashSeparatedCourseKey.from_deprecated_string(course_id)
+    course = get_course_with_access(request.user, 'staff', course_key, depth=None)
+    enrolled_students = User.objects.filter(
+        courseenrollment__course_id=course_key,
+        courseenrollment__is_active=1
+    ).order_by('username').select_related("profile")
+    grading_filter = Grading.objects.filter(
+        course_id=course_id
+    )
+
+    grading = {}
+    for el in grading_filter:
+        grading[el.problem_number-1] = el.min_grade, el.deadline
+
+    subsections = {}
+    grading_context = course.grading_context
+    for section_format, sections in grading_context['graded_sections'].iteritems():
+        for section in sections:
+            if(subsections.get(section['section_descriptor'].format)):
+                subsections[section['section_descriptor'].format].append(section['xmoduledescriptors'])
+            else:
+                subsections[section['section_descriptor'].format] = [section['xmoduledescriptors']]
+
+    for student in enrolled_students:
+        j = 0
+        grade_summary = student_grades(student, request, course)
+        good_student = True
+        for section in grade_summary['section_breakdown']:
+            if(section['label'][-3:] != 'Avg'):
+                try:
+                    if(len(subsections[section['category']]) > 1):
+                        subsection = subsections[section['category']][int(section['label'][-2:])-1]
+                    else:
+                        subsection = subsections[section['category']][0]
+
+                    problems = StudentModule.objects.filter(
+                        student=student,
+                        module_state_key__in=[
+                            descriptor.location for descriptor in subsection
+                        ]
+                    )
+                    for problem in problems:
+                        if(problem.modified.now().date() > grading[j][1]):
+                            good_student = False
+                            break
+                    if(not good_student):
+                        break
+                except IndexError:
+                    pass
+
+
+            if(grading.get(j) and section['percent'] <= grading[j][0]):
+                good_student = False
+                break
+            j += 1
+
+        if(grading.get(j) and grade_summary['percent'] <= grading[j][0]):
+            good_student = False
+
+        if(good_student):
+            result = [section['label']+'='+str(section['percent'])
+                      for section in grade_summary['section_breakdown']]
+            writer.writerow([student.username]+result)
+
+    return response
+
+
 @cache_control(no_cache=True, no_store=True, must_revalidate=True)
 @require_level('staff')
 def stats(request, course_id):
@@ -108,10 +171,19 @@ def stats(request, course_id):
     grading_filter = Grading.objects.filter(
         course_id=course_id
     )
-    grading = {}
 
+    grading = {}
     for el in grading_filter:
         grading[el.problem_number-1] = el.min_grade
+
+    subsections = {}
+    grading_context = course.grading_context
+    for section_format, sections in grading_context['graded_sections'].iteritems():
+        for section in sections:
+            if(subsections.get(section['section_descriptor'].format)):
+                subsections[section['section_descriptor'].format].append(section['xmoduledescriptors'])
+            else:
+                subsections[section['section_descriptor'].format] = [section['xmoduledescriptors']]
     """
     all_stats
     [0] - Total
@@ -121,28 +193,15 @@ def stats(request, course_id):
     [4] - Max
     [5] - Zero
     """
-    check2=[]
-    subsections = {}
-    grading_context = course.grading_context
-    for section_format, sections in grading_context['graded_sections'].iteritems():
-        for section in sections:
-            if(subsections.get(section['section_descriptor'].format)):
-                subsections[section['section_descriptor'].format].append(section['xmoduledescriptors'])
-            else:
-                subsections[section['section_descriptor'].format] = [section['xmoduledescriptors']]
-
-
     all_stats = []
     for section in student_grades(enrolled_students[0], request, course)['section_breakdown']:
-        if(section['label'][-3:] != 'Avg'):
-            scores = []
-            for i in range(0, 6):
-                scores.append(0)
-            all_stats.append([section['label'], scores])
+            all_stats.append([section['label'], [0,0,0,0,0,0]])
+    all_stats.append(['Total', [0,0,0,0,0,0]])
 
     for student in enrolled_students:
         j = 0
-        for section in student_grades(student, request, course)['section_breakdown']:
+        grade_summary = student_grades(student, request, course)
+        for section in grade_summary['section_breakdown']:
             if(section['label'][-3:] != 'Avg'):
                 try:
                     if(len(subsections[section['category']]) > 1):
@@ -165,16 +224,24 @@ def stats(request, course_id):
                 except IndexError:
                     pass
 
-                if(section['percent'] > 0):
-                    all_stats[j][1][2] += 1
-                if(grading.get(j) and section['percent'] >= grading[j]):
-                    all_stats[j][1][3] += 1
-                if(section['percent'] == 1.0):
-                    all_stats[j][1][4] += 1
-                if(section['percent'] == 0):
-                    all_stats[j][1][5] += 1
-                j += 1
+            if(section['percent'] > 0):
+                all_stats[j][1][2] += 1
+            if(grading.get(j) and section['percent'] >= grading[j]):
+                all_stats[j][1][3] += 1
+            if(section['percent'] == 1.0):
+                all_stats[j][1][4] += 1
+            if(section['percent'] == 0):
+                all_stats[j][1][5] += 1
+            j += 1
 
+        if(grade_summary['percent'] > 0):
+            all_stats[j][1][2] += 1
+        if(grading.get(j) and grade_summary['percent'] >= grading[j]):
+            all_stats[j][1][3] += 1
+        if(grade_summary['percent'] == 1.0):
+            all_stats[j][1][4] += 1
+        if(grade_summary['percent'] == 0):
+            all_stats[j][1][5] += 1
 
     return render_to_response('stats.html', {
         'url': request.path,

@@ -6,6 +6,7 @@
 <%
 gradeUrl=url
 statsUrl=url[:-6]
+csvUrl=url+"/csv"
 %>
 
 <%block name="js_extra">
@@ -150,6 +151,7 @@ statsUrl=url[:-6]
         </tbody>
       </table>
     </div>
+    <h4><a href=${csvUrl}>Download wellgraded students list</a></h4>
   </section>
 </div>
 </section>
